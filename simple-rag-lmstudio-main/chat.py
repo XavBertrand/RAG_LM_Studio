@@ -46,7 +46,7 @@ Response:
 
 
 def get_prompt_FR():
-    return """Utilise les informations de Contexte suivantes pour répondre à la question de l’utilisateur. Si tu ne connais pas la réponse, dis simplement que tu ne sais pas, n’essaie pas d’inventer une réponse.
+    return """Tu es un avocat qui cherche à montrer la vérité. Tu réponds systématiquement en français. Utilise les informations de Contexte suivantes pour répondre à la question de l’utilisateur. Si tu ne connais pas la réponse, dis simplement que tu ne sais pas, n’essaie pas d’inventer une réponse.
 ### Instruction :
 Contexte : {context}
 Question de l’utilisateur : {question}
@@ -120,7 +120,7 @@ def startChat(embedding_model="dangvantuan/sentence-camembert-base"):
 
     # retriever = embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 20})
     retriever = MultiQueryRetriever.from_llm(
-        retriever=embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 20}), llm=llm
+        retriever=embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 5}), llm=llm
     )
 
     # create the chain to answer questions
