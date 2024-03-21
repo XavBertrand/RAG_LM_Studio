@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import PyPDF2
+import fitz
 import pytesseract
 from PIL import Image
 import glob
@@ -148,6 +149,33 @@ def extract_txt_from_dir(dir_path, content_path, pytesseract_path):
                 text = ""
                 for page in range(len(reader.pages)):
                     text += reader.pages[page].extract_text()
+
+                if text == "":
+                    # the pdf content is probably scans
+                    doc = fitz.open(file)
+
+                    tmp_dir = os.path.join(content_path, "tmp_dir")
+                    if os.path.isdir(tmp_dir):
+                        shutil.rmtree(tmp_dir)
+                    os.makedirs(tmp_dir)
+
+                    # Parcourir chaque page du PDF
+                    for i in range(len(doc)):
+                        images = doc.get_page_images(i)
+                        for img in images:
+
+                            # Récupérer la liste des images sur la page
+                            xref = img[0]
+                            pix = fitz.Pixmap(doc, xref)
+                            tmp_file = os.path.join(tmp_dir, f"page_{i}_image_{xref}.jpg")
+                            pix.pil_save(tmp_file)
+                            image = Image.open(tmp_file)
+                            # Appliquer l'OCR à l'image
+                            text += pytesseract.image_to_string(image, lang="fra")
+
+                    # Fermer le fichier PDF
+                    doc.close()
+                    shutil.rmtree(tmp_dir)
 
                 file_txt_name = (
                     filename.replace("/", "_")
