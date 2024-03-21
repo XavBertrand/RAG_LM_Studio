@@ -30,7 +30,7 @@ def embed(embedding_model="dangvantuan/sentence-camembert-base"):
     documents = loader.load()
 
     # Split the data into chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=128)
 
     chunks = text_splitter.split_documents(documents)
 
