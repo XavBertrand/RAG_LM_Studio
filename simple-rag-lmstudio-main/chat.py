@@ -1,4 +1,5 @@
 from langchain_openai import OpenAI
+from langchain_community.chat_models import ChatOllama, ChatOpenAI
 from langchain.chains import LLMChain
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -7,15 +8,24 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 import textwrap
-import gradio
+import gradio as gr
+import streamlit as st
 from langchain_community.embeddings import (
-    HuggingFaceBgeEmbeddings,
     HuggingFaceEmbeddings,
 )
 from langchain_community.vectorstores import Chroma
 import os
 import tkinter as tk
 from tkinter import filedialog
+import zipfile
+
+import asyncio
+from langchain_community.callbacks import get_openai_callback
+
+from langchain_community.llms import LlamaCpp
+from langchain_core.callbacks import CallbackManager, StreamingStdOutCallbackHandler
+from langchain_core.prompts import PromptTemplate
+
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ["OPENAI_API_KEY"] = "dummy-key"
@@ -24,12 +34,36 @@ os.environ["OPENAI_API_KEY"] = "dummy-key"
 # callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
 # Verbose is required to pass to the callback manager
 
-temperature = 0.1  # Use a value between 0 and 2. Lower = factual, higher = creative
-n_gpu_layers = 43  # Change this value based on your model and your GPU VRAM pool.
-n_batch = 512  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
+# temperature = 0.1  # Use a value between 0 and 2. Lower = factual, higher = creative
+# n_gpu_layers = 43  # Change this value based on your model and your GPU VRAM pool.
+# n_batch = (
+#     1024  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
+# )
 
 # Make sure the model path is correct for your system!
-llm = OpenAI(openai_api_base="http://localhost:1234/v1", openai_api_key="dummy-key")
+llm = ChatOpenAI(openai_api_base="http://localhost:1234/v1", openai_api_key="dummy-key")
+# llm = ChatOllama(model="mistral-7b-instruct-v0.2.Q4_K_M:latest")
+
+# n_gpu_layers = (
+#     -1
+# )  # The number of layers to put on the GPU. The rest will be on the CPU. If you don't know how many layers there are, you can use -1 to move all to GPU.
+# n_batch = 512  # Should be between 1 and n_ctx, consider the amount of VRAM in your GPU.
+# n_ctx = 2048
+#
+#
+# callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
+#
+# # Make sure the model path is correct for your system!
+# llm = LlamaCpp(
+#     # model_path=r"C:\Users\bertr\LLM_GGUF\models\Huggingface\Mixtral-8x7B\mixtral-8x7b-v0.1.Q4_K_M.gguf",
+#     model_path=r"C:\Users\bertr\LLM_GGUF\models\Huggingface\Mistral-7B\mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+#     n_gpu_layers=n_gpu_layers,
+#     n_batch=n_batch,
+#     n_ctx=n_ctx,
+#     callback_manager=callback_manager,
+#     f16_kv=True,
+#     verbose=True,  # Verbose is required to pass to the callback manager
+# )
 
 
 ## Follow the default prompt style from the OpenOrca-Platypus2 huggingface model card.
@@ -72,9 +106,9 @@ def process_llm_response(llm_response):
     if not llm_response:
         return "Please enter a question"
     print(wrap_text_preserve_newlines(llm_response["result"]))
-    print("\n\nSources:")
-    for source in llm_response["source_documents"]:
-        print(source.metadata["source"])
+    # print("\n\nSources:")
+    # for source in llm_response["source_documents"]:
+    #     print(source.metadata["source"])
     response = llm_response["result"]
     response = response.split("### Response")[0]
     return response
@@ -96,13 +130,14 @@ def select_folder():
         # Exécutez votre script "embedding.py" avec le chemin du dossier sélectionné ici
 
 
-def startChat(embedding_model="dangvantuan/sentence-camembert-base"):
-    embedding_directory = "./content/chroma_db"
-    # embedding_model = HuggingFaceBgeEmbeddings(
-    #     model_name="BAAI/bge-base-en-v1.5", model_kwargs={"device": "cuda"}
-    # )
+def startChat(embedding_model="dangvantuan/sentence-camembert-base", raptor=False):
+
+    if raptor:
+        embedding_directory = r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content\chroma_db_raptor"
+    else:
+        embedding_directory = r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content\chroma_db"
+
     embedding_model = HuggingFaceEmbeddings(
-        # model_name="sentence-transformers/all-MiniLM-L6-v2",
         model_name=embedding_model,
         model_kwargs={"device": "cuda"},
     )
@@ -118,9 +153,11 @@ def startChat(embedding_model="dangvantuan/sentence-camembert-base"):
 
     chain_type_kwargs = {"prompt": llama_prompt}
 
-    # retriever = embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 20})
+    # "similarity" or "mmr"
+    # retriever = embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 5})
     retriever = MultiQueryRetriever.from_llm(
-        retriever=embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 5}), llm=llm
+        retriever=embedding_db.as_retriever(search_type="mmr", search_kwargs={"k": 5}),
+        llm=llm,
     )
 
     # create the chain to answer questions
@@ -129,18 +166,12 @@ def startChat(embedding_model="dangvantuan/sentence-camembert-base"):
         chain_type="stuff",
         retriever=retriever,
         chain_type_kwargs=chain_type_kwargs,
-        return_source_documents=True,
+        # return_source_documents=True,
     )
 
     def runChain(query, history):
         return process_llm_response(qa_chain(query))
 
-    chatbot_interface = gradio.ChatInterface(runChain)
-
-    # select_folder_button = gradio.Interface(
-    #     fn=select_folder, inputs="button", outputs="text"
-    # )
-    # gradio.Interface([chatbot_interface, select_folder_button]).queue().launch(share=False, debug=True)
-
+    chatbot_interface = gr.ChatInterface(runChain)
     chatbot_interface.queue()
     chatbot_interface.launch(share=False, debug=True)

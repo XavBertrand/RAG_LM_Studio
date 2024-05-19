@@ -1,5 +1,6 @@
 from scraper import scrape, extract_txt_from_dir
 from embedder import embed
+from embedder_raptor import embed_raptor
 from chat import startChat
 import os
 
@@ -21,10 +22,16 @@ pytesseract_path = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
 # embedding_model = "dangvantuan/sentence-camembert-base"
 embedding_model = "dangvantuan/sentence-camembert-large"
 
-FORCE = True
+FORCE = False
+RAPTOR = True
 if FORCE:
     # scrape(start_url, start_depth)
     extract_txt_from_dir(documents_path, content_path, pytesseract_path)
-    embed(embedding_model)
 
-startChat(embedding_model)
+    if RAPTOR:
+        llm_raptor = "mistral-7b-instruct-v0.2.Q4_K_M:latest"
+        embed_raptor(embedding_model, content_path, llm_raptor)
+    else:
+        embed(embedding_model, content_path)
+
+startChat(embedding_model, raptor=RAPTOR)
