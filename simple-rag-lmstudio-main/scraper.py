@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import PyPDF2
+import pdfplumber
 import fitz
 import pytesseract
 from PIL import Image
@@ -142,13 +143,15 @@ def extract_txt_from_dir(dir_path, content_path, pytesseract_path):
 
         if filename.endswith(".pdf"):
             # Ouvrir le fichier PDF
-            with open(file, "rb") as fid:
-                # Créer un lecteur PDF
-                reader = PyPDF2.PdfReader(fid)
+            # with open(file, "rb") as fid:
+            #     # Créer un lecteur PDF
+            #     reader = PyPDF2.PdfReader(fid)
+            with pdfplumber.open(file) as reader:
+
                 # Extraire le texte de chaque page
                 text = ""
                 for page in range(len(reader.pages)):
-                    text += reader.pages[page].extract_text()
+                    text += reader.pages[page].extract_text(x_tolerance=1)
 
                 if text == "":
                     # the pdf content is probably scans
@@ -167,7 +170,9 @@ def extract_txt_from_dir(dir_path, content_path, pytesseract_path):
                             # Récupérer la liste des images sur la page
                             xref = img[0]
                             pix = fitz.Pixmap(doc, xref)
-                            tmp_file = os.path.join(tmp_dir, f"page_{i}_image_{xref}.jpg")
+                            tmp_file = os.path.join(
+                                tmp_dir, f"page_{i}_image_{xref}.jpg"
+                            )
                             pix.pil_save(tmp_file)
                             image = Image.open(tmp_file)
                             # Appliquer l'OCR à l'image
@@ -241,8 +246,10 @@ def extract_txt_from_dir(dir_path, content_path, pytesseract_path):
 
                 text = pytesseract.image_to_string(image, lang="fra")
 
-                # Enregistrer le texte dans un fichier .txt
-                with open(
-                    os.path.join(content_path, file_txt_name[:-4] + f"_img{i}.txt"), "w"
-                ) as txt_file:
-                    txt_file.write(text)
+                if not text == "":
+                    # Enregistrer le texte dans un fichier .txt
+                    with open(
+                        os.path.join(content_path, file_txt_name[:-4] + f"_img{i}.txt"),
+                        "w",
+                    ) as txt_file:
+                        txt_file.write(text)
