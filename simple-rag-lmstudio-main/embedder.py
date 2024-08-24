@@ -10,24 +10,20 @@ import os
 embedding_db = None
 
 
-def embed(embedding_model="dangvantuan/sentence-camembert-base", content_path=None, config=None):
-    data_directory = content_path
-    embedding_directory = os.path.join(content_path, "chroma_db")
+def embed(config):
+    data_directory = config["content_path"]
+    embedding_directory = os.path.join(config["content_path"], "chroma_db")
 
     # Load the huggingface embedding model
-    model_name = embedding_model
+    model_name = config["embedding_model"]
+    encode_kwargs = {"normalize_embeddings": True}
 
-    encode_kwargs = {
-        "normalize_embeddings": True
-    }  # set True to compute cosine similarity
-
-    # embedding_model = HuggingFaceBgeEmbeddings(
     embedding_model = HuggingFaceEmbeddings(
         model_name=model_name,
-        model_kwargs={"device": "cuda"},
-        # model_kwargs={"device": "cpu"},
+        model_kwargs={"device": "cuda", "trust_remote_code": True},
         encode_kwargs=encode_kwargs,
         show_progress=True,
+
     )
 
     print("\nCalculating Embeddings\n")

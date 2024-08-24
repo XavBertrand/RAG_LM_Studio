@@ -18,7 +18,7 @@ config = {
     "embedding_model": "Lajavaness/bilingual-embedding-large-8k",
     "FORCE_SCRAPER": False,
     "FORCE_EMBED": True,
-    "RAPTOR": True,
+    "EMBED_RAPTOR": True,
     "EMBED_SUMMARY": False,
     "chunk_size": 500,
     "chunk_overlap": 100,
@@ -34,23 +34,21 @@ embedding_model = config["embedding_model"]
 FORCE_SCRAPER = config["FORCE_SCRAPER"]
 FORCE_EMBED = config["FORCE_EMBED"]
 EMBED_SUMMARY = config["EMBED_SUMMARY"]
-RAPTOR = config["RAPTOR"]
+EMBED_RAPTOR = config["EMBED_RAPTOR"]
 llm_ollama = config["llm_ollama"]
 
 if FORCE_SCRAPER:
     extract_txt_from_dir(documents_path, content_path, pytesseract_path)
 
 if FORCE_EMBED:
-    if RAPTOR:
-        embed_raptor(embedding_model, content_path, config)
+    if EMBED_RAPTOR:
+        embed_raptor(config)
         if EMBED_SUMMARY:
             warnings.warn("EMBED_SUMMARY not compatible yet with RAPTOR!!")
     else:
         if EMBED_SUMMARY:
-            embed_summary(
-                embedding_model, content_path, config,
-            )
+            embed_summary(config)
         else:
-            embed(embedding_model, content_path, config)
+            embed(config)
 
-startChat(embedding_model, config)
+startChat(config)

@@ -164,11 +164,11 @@ def streamlit_ui(runChain):
             st.markdown(f"**Chatbot:** {message['content']}")
 
 
-def startChat(embedding_model="dangvantuan/sentence-camembert-base", config=None):
+def startChat(config):
 
     llm = ChatOllama(model=config["llm_ollama"])
 
-    if config["RAPTOR"]:
+    if config["EMBED_RAPTOR"]:
         embedding_directory = r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content\chroma_db_raptor"
     elif config["EMBED_SUMMARY"]:
         embedding_directory = r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content\chroma_db_summary"
@@ -176,7 +176,7 @@ def startChat(embedding_model="dangvantuan/sentence-camembert-base", config=None
         embedding_directory = r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content\chroma_db"
 
     embedding_model = HuggingFaceEmbeddings(
-        model_name=embedding_model,
+        model_name=config["embedding_model"],
         model_kwargs={"device": "cuda", "trust_remote_code": True},
     )
     embedding_db = Chroma(
