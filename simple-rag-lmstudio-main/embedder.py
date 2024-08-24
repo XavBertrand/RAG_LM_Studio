@@ -10,7 +10,7 @@ import os
 embedding_db = None
 
 
-def embed(embedding_model="dangvantuan/sentence-camembert-base", content_path=None):
+def embed(embedding_model="dangvantuan/sentence-camembert-base", content_path=None, config=None):
     data_directory = content_path
     embedding_directory = os.path.join(content_path, "chroma_db")
 
@@ -38,8 +38,8 @@ def embed(embedding_model="dangvantuan/sentence-camembert-base", content_path=No
     documents = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=100,
+        chunk_size=config["chunk_size"],
+        chunk_overlap=config["chunk_overlap"],
     )
 
     chunks = text_splitter.split_documents(documents)

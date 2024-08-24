@@ -13,7 +13,7 @@ embedding_db = None
 
 
 def generate_summary(document, llm):
-    prompt_template = """Résume le texte suivant en français en 2-3 phrases. Le résumé doit être concis et contenir les informations les plus importantes du texte. Précise, si c'est possible, les liens entre les personnes qui apparaissent dans le texte :
+    prompt_template = """Résume le texte suivant en français. Le résumé doit être concis et contenir les informations les plus importantes du texte. Précise, les liens entre les personnes qui apparaissent dans le texte, et tu portes une attention particulière aux dates que tu fais apparaitre dans le résumé. Indique bien les prénoms et noms des personnes qui apparaissent dans le texte :
 
 {text}
 
@@ -21,19 +21,19 @@ Résumé en français :"""
 
     prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
 
-    chain = load_summarize_chain(
-        llm,
-        chain_type="stuff",
-        prompt=prompt
-    )
+    chain = load_summarize_chain(llm, chain_type="stuff", prompt=prompt)
 
     summary = chain.run([Document(page_content=document.page_content)])
     return summary.strip()
 
 
-def embed_summary(embedding_model="dangvantuan/sentence-camembert-base", content_path=None, llm_name="Mistral-NeMo-for-RAG:latest"):
+def embed_summary(
+    embedding_model="dangvantuan/sentence-camembert-base",
+    content_path=None,
+    config=None,
+):
     data_directory = content_path
-    embedding_directory = os.path.join(content_path, "chroma_db")
+    embedding_directory = os.path.join(content_path, "chroma_db_summary")
 
     # Load the huggingface embedding model
     model_name = embedding_model
@@ -41,9 +41,10 @@ def embed_summary(embedding_model="dangvantuan/sentence-camembert-base", content
 
     embedding_model = HuggingFaceEmbeddings(
         model_name=model_name,
-        model_kwargs={"device": "cuda"},
+        model_kwargs={"device": "cuda", "trust_remote_code": True},
         encode_kwargs=encode_kwargs,
         show_progress=True,
+
     )
 
     print("\nCalculating Embeddings\n")
@@ -53,7 +54,7 @@ def embed_summary(embedding_model="dangvantuan/sentence-camembert-base", content
     documents = loader.load()
 
     # Initialize Ollama LLM
-    llm = Ollama(model=llm_name)  # Vous pouvez changer le modèle selon vos besoins
+    llm = Ollama(model=config["llm_ollama"])
 
     # Generate summaries and create new chunks
     summarized_chunks = []
@@ -61,8 +62,8 @@ def embed_summary(embedding_model="dangvantuan/sentence-camembert-base", content
         summary = generate_summary(doc, llm)
 
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=100,
+            chunk_size=config["chunk_size"],
+            chunk_overlap=config["chunk_overlap"],
         )
 
         chunks = text_splitter.split_documents([doc])
