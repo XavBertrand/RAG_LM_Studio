@@ -13,7 +13,6 @@ import sys, os
 from utils_raptor import *
 
 
-
 embedding_db = None
 
 MARKDOWN_SEPARATORS = [
@@ -28,6 +27,7 @@ MARKDOWN_SEPARATORS = [
     "",
 ]
 
+
 ## Helper Fuction to count the number of Tokensin each text
 def num_tokens_from_string(string: str, encoding_name: str) -> int:
     """Returns the number of tokens in a text string."""
@@ -36,7 +36,11 @@ def num_tokens_from_string(string: str, encoding_name: str) -> int:
     return num_tokens
 
 
-def embed_raptor(embedding_model="dangvantuan/sentence-camembert-base", content_path=None, llm_raptor=None):
+def embed_raptor(
+    embedding_model="dangvantuan/sentence-camembert-base",
+    content_path=None,
+    config=None,
+):
     data_directory = content_path
     embedding_directory = os.path.join(content_path, "chroma_db_raptor")
 
@@ -52,11 +56,18 @@ def embed_raptor(embedding_model="dangvantuan/sentence-camembert-base", content_
         # "device": "cpu",
     }
 
+    # embedding_model = HuggingFaceEmbeddings(
+    #     model_name=model_name,
+    #     model_kwargs=model_kwargs,
+    #     encode_kwargs=encode_kwargs,
+    #     show_progress=True,
+    # )
     embedding_model = HuggingFaceEmbeddings(
         model_name=model_name,
-        model_kwargs=model_kwargs,
+        model_kwargs={"device": "cuda", "trust_remote_code": True},
         encode_kwargs=encode_kwargs,
         show_progress=True,
+
     )
     # embedding_model = OpenAIEmbeddings()
 
@@ -74,9 +85,7 @@ def embed_raptor(embedding_model="dangvantuan/sentence-camembert-base", content_
     docs_texts = [d.page_content for d in documents]
 
     # compute the nb of token for each doc
-    counts = [
-        num_tokens_from_string(d.page_content, "cl100k_base") for d in documents
-    ]
+    counts = [num_tokens_from_string(d.page_content, "cl100k_base") for d in documents]
 
     # Doc texts concat
     d_sorted = sorted(documents, key=lambda x: x.metadata["source"])
@@ -103,20 +112,27 @@ def embed_raptor(embedding_model="dangvantuan/sentence-camembert-base", content_
         # Display the histogram
         plt.show()
 
-    chunk_size_tok = 1000
+    chunk_size_tok = config["chunk_size"]
     # text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
     #     chunk_size=chunk_size_tok,
     #     chunk_overlap=0,
     # )
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size_tok,
-        chunk_overlap=0,
+        chunk_size=config["chunk_size"],
+        chunk_overlap=config["chunk_overlap"],
     )
     texts_split = text_splitter.split_text(concatenated_content)
 
     # Build tree
     leaf_texts = texts_split
-    results = recursive_embed_cluster_summarize(leaf_texts, level=1, n_levels=3, embedding=embedding_model, llm_raptor=llm_raptor)
+    # results = recursive_embed_cluster_summarize(leaf_texts, level=1, n_levels=3, embedding=embedding_model, llm_raptor=llm_raptor)
+    results = recursive_embed_cluster_summarize(
+        leaf_texts,
+        level=1,
+        n_levels=config["n_levels_raptor"],
+        embedding=embedding_model,
+        llm_raptor=config["llm_ollama"],
+    )
 
     # Initialize all_texts with leaf_texts
     all_texts = leaf_texts.copy()
@@ -131,6 +147,10 @@ def embed_raptor(embedding_model="dangvantuan/sentence-camembert-base", content_
     # Now, use all_texts to build the vectorstore with Chroma
     # Vector store must be done of truncated texts!! Crash if nb tokens>512
     all_texts_truncated = limit_tokens(all_texts, max_tokens=500)
-    embedding_db = Chroma.from_texts(texts=all_texts_truncated, embedding=embedding_model, persist_directory=embedding_directory)
+    embedding_db = Chroma.from_texts(
+        texts=all_texts_truncated,
+        embedding=embedding_model,
+        persist_directory=embedding_directory,
+    )
 
     print("Embeddings completed")

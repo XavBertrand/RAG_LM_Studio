@@ -4,12 +4,15 @@ import numpy as np
 import pandas as pd
 import umap
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.chat_models import ChatOllama, ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 from langchain_core.output_parsers import StrOutputParser
 from sklearn.mixture import GaussianMixture
+from sklearn.manifold import TSNE
 import pickle
 import tiktoken
 from transformers import AutoTokenizer
+import matplotlib.pyplot as plt
 
 RANDOM_SEED = 224  # Fixed seed for reproducibility
 
@@ -50,9 +53,18 @@ def global_cluster_embeddings(
     """
     if n_neighbors is None:
         n_neighbors = int((len(embeddings) - 1) ** 0.5)
-    return umap.UMAP(
+    clusterable_embedding = umap.UMAP(
         n_neighbors=n_neighbors, n_components=dim, metric=metric
     ).fit_transform(embeddings)
+
+    # perplexity = np.amin(embeddings.shape[-1], 30)
+    # clusterable_embedding = TSNE(
+    #     n_components=dim,
+    #     perplexity=perplexity,
+    #     random_state=42,
+    # ).fit_transform(embeddings)
+
+    return clusterable_embedding
 
 
 def local_cluster_embeddings(
@@ -235,7 +247,7 @@ def embed_cluster_texts(texts, embedding):
     """
     text_embeddings_np = embed(texts, embedding)  # Generate embeddings
     cluster_labels = perform_clustering(
-        text_embeddings_np, 10, 0.1
+        text_embeddings_np, 2, 0.1
     )  # Perform clustering on the embeddings
     df = pd.DataFrame()  # Initialize a DataFrame to store the results
     df["text"] = texts  # Store original texts
@@ -312,14 +324,15 @@ def embed_cluster_summarize_texts(
     template_FR = """Voici un extrait de documents utilisés pour un dossier juridique.
     Donne-moi un résumé détaillé mais le plus court possible des documents fournis en dessous.
     
-    IMPORTANT: Tu réponds UNIQUEMENT en français. Le résumé doit être à la fois précis ET doit faire moins de 128 mots.
+    IMPORTANT: Tu réponds UNIQUEMENT en français. Le résumé doit être précis. Tu portes une attention particulière aux 
+    dates et tu les fais apparaître dans le résumé.
 
     Documents:
     {context}
     """
 
-    # model = ChatOllama(model=llm_raptor)
-    model = ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
+    model = ChatOllama(model=llm_raptor)
+    # model = ChatOpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
 
     prompt = ChatPromptTemplate.from_template(template_FR)
     chain = prompt | model | StrOutputParser()
@@ -359,6 +372,7 @@ def recursive_embed_cluster_summarize(
     - Dict[int, Tuple[pd.DataFrame, pd.DataFrame]], a dictionary where keys are the recursion
       levels and values are tuples containing the clusters DataFrame and summaries DataFrame at that level.
     """
+    print(f"Recursive level = {level}")
     results = {}  # Dictionary to store results at each level
 
     # Perform embedding, clustering, and summarization for the current level
