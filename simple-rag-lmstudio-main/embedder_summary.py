@@ -8,6 +8,7 @@ from langchain.docstore.document import Document
 from langchain.prompts import PromptTemplate
 import os
 from tqdm import tqdm
+import shutil
 
 embedding_db = None
 
@@ -28,15 +29,16 @@ Résumé en français :"""
 
 
 def embed_summary(
-    embedding_model="dangvantuan/sentence-camembert-base",
-    content_path=None,
-    config=None,
+    config
 ):
-    data_directory = content_path
-    embedding_directory = os.path.join(content_path, "chroma_db_summary")
+    data_directory = config["content_path"]
+    embedding_directory = os.path.join(config["content_path"], "chroma_db_summary")
+
+    if os.path.exists(embedding_directory):
+        shutil.rmtree(embedding_directory)
 
     # Load the huggingface embedding model
-    model_name = embedding_model
+    model_name = config["embedding_model"]
     encode_kwargs = {"normalize_embeddings": True}
 
     embedding_model = HuggingFaceEmbeddings(

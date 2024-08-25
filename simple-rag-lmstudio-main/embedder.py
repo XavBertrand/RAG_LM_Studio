@@ -5,7 +5,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
-
+import shutil
 
 embedding_db = None
 
@@ -13,6 +13,9 @@ embedding_db = None
 def embed(config):
     data_directory = config["content_path"]
     embedding_directory = os.path.join(config["content_path"], "chroma_db")
+
+    if os.path.exists(embedding_directory):
+        shutil.rmtree(embedding_directory)
 
     # Load the huggingface embedding model
     model_name = config["embedding_model"]

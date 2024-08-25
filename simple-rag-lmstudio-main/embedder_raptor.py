@@ -10,7 +10,9 @@ from langchain_core.documents import Document
 import matplotlib.pyplot as plt
 import tiktoken
 import sys, os
+import shutil
 from utils_raptor import *
+
 
 
 embedding_db = None
@@ -37,15 +39,16 @@ def num_tokens_from_string(string: str, encoding_name: str) -> int:
 
 
 def embed_raptor(
-    embedding_model="dangvantuan/sentence-camembert-base",
-    content_path=None,
-    config=None,
+    config,
 ):
-    data_directory = content_path
-    embedding_directory = os.path.join(content_path, "chroma_db_raptor")
+    data_directory = config["content_path"]
+    embedding_directory = os.path.join(config["content_path"], "chroma_db_raptor")
+
+    if os.path.exists(embedding_directory):
+        shutil.rmtree(embedding_directory)
 
     # Load the huggingface embedding model
-    model_name = embedding_model
+    model_name = config["embedding_model"]
 
     encode_kwargs = {
         "normalize_embeddings": True,  # set True to compute cosine similarity

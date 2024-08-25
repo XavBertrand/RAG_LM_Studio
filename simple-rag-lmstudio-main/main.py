@@ -9,18 +9,19 @@ import warnings
 
 os.environ["TESSDATA_PREFIX"] = r"C:\\Program Files\\Tesseract-OCR\\tessdata"
 
-# todo: add conf in a json file
+# todo: read the conf from a json file
 config = {
     "llm_ollama": "Mistral-NeMo-for-RAG:latest",
     "documents_path": r"C:\Users\bertr\PycharmProjects\TestRAG\data\wetransfer_pieces-we-transfert_2023-10-27_1533",
     "content_path": r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content",
+    # "content_path": r"C:\Users\bertr\PycharmProjects\TestRAG\simple-rag-lmstudio-main\content_test",
     "pytesseract_path": r"C:/Program Files/Tesseract-OCR/tesseract.exe",
     "embedding_model": "Lajavaness/bilingual-embedding-large-8k",
     "FORCE_SCRAPER": False,
     "FORCE_EMBED": True,
     "EMBED_RAPTOR": True,
     "EMBED_SUMMARY": False,
-    "chunk_size": 500,
+    "chunk_size": 1000,
     "chunk_overlap": 100,
     "n_levels_raptor": 3,
     "ui": "gradio",
